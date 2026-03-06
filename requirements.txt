@@ -3,5 +3,6 @@ google-genai
 gTTS
 pandas
 openpyxl
-pyautogui
+
+
 Pillow
