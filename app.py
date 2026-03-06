@@ -10,9 +10,11 @@ st.set_page_config(page_title="سماك V3 - المساعد التسويقي", p
 st.title("🤖 سماك V3: المحلل والباحث الذكي")
 st.sidebar.header("إدارة شركة مجال الحدث")
 
-# 2. جلب المفتاح السري
+# 2. جلب المفتاح السري وحفظ الاتصال في الذاكرة (هنا التعديل السحري)
 GOOGLE_API_KEY = st.secrets["GEMINI_API_KEY"]
-client = genai.Client(api_key=GOOGLE_API_KEY)
+
+if "client" not in st.session_state:
+    st.session_state.client = genai.Client(api_key=GOOGLE_API_KEY)
 
 # 3. إعداد الذاكرة وأدوات البحث
 if "chat" not in st.session_state:
@@ -22,7 +24,8 @@ if "chat" not in st.session_state:
         "مهمتك: 1. البحث عن أرقام الشركات والعملاء أونلاين. 2. تحليل ملفات كراسات الشروط. "
         "3. تقديم نصائح تسويقية ذكية."
     )
-    st.session_state.chat = client.chats.create(
+    # لاحظ هنا استخدمنا st.session_state.client بدلاً من client لوحدها
+    st.session_state.chat = st.session_state.client.chats.create(
         model="gemini-2.0-flash", 
         config=types.GenerateContentConfig(system_instruction=system_instruction, tools=[search_tool])
     )
@@ -68,3 +71,4 @@ if prompt := st.chat_input("يا سماك، ابحث لي عن عملاء لشا
             st.download_button("حفظ النتائج كـ Excel", data=df.to_csv(index=False).encode('utf-8-sig'), file_name="smak_data.csv")
 
     st.session_state.messages.append({"role": "assistant", "content": response.text})
+
