@@ -1,9 +1,6 @@
 streamlit
-google-genai
+groq
 gTTS
 pandas
-openpyxl
 duckduckgo-search
-
-Pillow
-
+PyPDF2
