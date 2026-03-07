@@ -3,6 +3,7 @@ google-genai
 gTTS
 pandas
 openpyxl
-
+duckduckgo-search
 
 Pillow
+
