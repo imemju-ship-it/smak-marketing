@@ -26,7 +26,7 @@ if "chat" not in st.session_state:
         "3. تقديم نصائح تسويقية ذكية."
     )
     st.session_state.chat = st.session_state.client.chats.create(
-        model="gemini-1.5-flash", 
+        model="gemini-2.0-flash", 
         config=types.GenerateContentConfig(
             system_instruction=system_instruction, 
             tools=[search_tool]
@@ -80,4 +80,5 @@ if prompt := st.chat_input("يا سماك، ابحث لي عن عملاء لشا
             
             except Exception as e:
                 st.error(f"⚠️ واجه سماك مشكلة مؤقتة في الاتصال بسيرفر البحث. التفاصيل: {e}")
+
 
