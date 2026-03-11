@@ -1,101 +1,92 @@
 import streamlit as st
 from groq import Groq
-from gtts import gTTS
-import io
-import pandas as pd
-from duckduckgo_search import DDGS
-import PyPDF2
-import base64
-from PIL import Image
 
-# 1. إعدادات الواجهة
-st.set_page_config(page_title="سماك V5 - المحلل البصري", page_icon="👁️", layout="wide")
-st.title("🤖 سماك V5: ذو الرؤية الحاسوبية (مجاني)")
-st.sidebar.header("إدارة شركة مجال الحدث")
+# ==========================================
+# 0. إعداد الواجهة الفخمة (Streamlit)
+# ==========================================
+st.set_page_config(page_title="Mad Genius AI Portal", page_icon="⚖️", layout="wide")
 
-# 2. تفعيل محرك Groq المجاني
+st.markdown("<h1 style='text-align: center; color: #D4AF37;'>Mad Genius AI - Unified Portal</h1>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center;'>بوابة الأعمال الذكية (قانون | موارد بشرية | محاسبة)</h3>", unsafe_allow_html=True)
+st.markdown("---")
+
+# ==========================================
+# 1. إعداد محرك Groq الخارق
+# ==========================================
+# كذا الكود بيسحب المفتاح من خزنة سرية بدل ما يكون مكشوف
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
-client = Groq(api_key=GROQ_API_KEY)
+try:
+    client = Groq(api_key=GROQ_API_KEY)
+except Exception as e:
+    st.error("يرجى التأكد من إضافة مفتاح Groq API الصحيح.")
 
-# 3. الذاكرة
+# ==========================================
+# 2. هندسة القبعات والموجه الذكي (Router)
+# ==========================================
+PROMPTS = {
+    "LEGAL": "أنت مستشار قانوني سعودي (Mad Legal). أجب بصرامة واحترافية وفقاً للأنظمة السعودية. اكتب الإجابة مقسمة إلى: التكييف القانوني، السند النظامي، الرأي، والإجراء. لا تستخدم الإنجليزية أبداً.",
+    
+    "HR": "أنت خبير موارد بشرية سعودي (Mad HR). أجب بناءً على نظام العمل السعودي والتأمينات الاجتماعية وقوى. لا تستخدم الإنجليزية أبداً.",
+    
+    "ACCOUNTING": "أنت محاسب قانوني ومالي سعودي (Mad Accountant). أجب بناءً على معايير المحاسبة (IFRS) وأنظمة هيئة الزكاة (ZATCA). لا تستخدم الإنجليزية أبداً."
+}
+
+def smart_router(user_input):
+    hr_keywords = ['موظف', 'إجازة', 'راتب', 'غياب', 'استقالة', 'تأمينات', 'نهاية خدمة', 'دوام']
+    acc_keywords = ['ضريبة', 'زكاة', 'فاتورة', 'ميزانية', 'قوائم مالية', 'خصم', 'إيرادات', 'تكاليف', 'محاسبة', 'هللة']
+    
+    if any(word in user_input for word in acc_keywords):
+        return "ACCOUNTING", "💼 تم التوجيه لقسم المحاسبة (Mad Accountant)"
+    elif any(word in user_input for word in hr_keywords):
+        return "HR", "👥 تم التوجيه لقسم الموارد البشرية (Mad HR)"
+    else:
+        return "LEGAL", "⚖️ تم التوجيه للقسم القانوني (Mad Legal)"
+
+# ==========================================
+# 3. إدارة ذاكرة المحادثة (Session State)
+# ==========================================
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# 4. شريط المهام (لرفع الكراسات والصور)
-with st.sidebar:
-    st.info("👁️ ارفع صورة (شاشة، موقع، تصميم) أو كراسة شروط.")
-    uploaded_image = st.file_uploader("ارفع صورة (JPG/PNG)", type=["jpg", "png", "jpeg"])
-    uploaded_file = st.file_uploader("ارفع كراسة الشروط (PDF)", type=["pdf"])
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
-# 5. عرض المحادثة
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
-
-# 6. معالجة الطلب
-if prompt := st.chat_input("اطلب من سماك تحليل الصورة المرفقة أو البحث..."):
+# ==========================================
+# 4. محرك المحادثة الحي (Chat Logic)
+# ==========================================
+if prompt := st.chat_input("اكتب استفسارك هنا (مثال: طريقة حساب نهاية الخدمة، أو نسبة الضريبة؟)"):
     
+    st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
-    st.session_state.messages.append({"role": "user", "content": prompt})
 
+    domain, status_msg = smart_router(prompt)
+    
     with st.chat_message("assistant"):
-        with st.spinner("سماك يفتح عيونه ويحلل..."):
-            try:
-                # إذا المستخدم رفع صورة (رؤية حاسوبية)
-                if uploaded_image:
-                    # تحويل الصورة لشفرة يفهمها الموديل
-                    base64_image = base64.b64encode(uploaded_image.read()).decode('utf-8')
-                    
-                    # نستخدم نموذج الرؤية الخاص من Groq
-                    response = client.chat.completions.create(
-                        model="llama-3.2-90b-vision-preview", # 👈 هذا الموديل مخصص للرؤية ومجاني!
-                        messages=[{
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": prompt},
-                                {
-                                    "type": "image_url",
-                                    "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
-                                }
-                            ]
-                        }]
-                    )
-                    bot_reply = response.choices[0].message.content
-
-                # إذا مافي صورة، يكمل شغل كالمعتاد (بحث ونصوص)
-                else:
-                    pdf_text = ""
-                    if uploaded_file:
-                        reader = PyPDF2.PdfReader(uploaded_file)
-                        pdf_text = "\n".join([page.extract_text() for page in reader.pages])[:5000]
-                        pdf_text = f"\n\n[معلومات الـ PDF]:\n{pdf_text}"
-
-                    search_results = DDGS().text(prompt, max_results=5)
-                    context = f"نتائج بحث:\n{search_results}{pdf_text}\n\nالمطلوب: {prompt}"
-                    
-                    response = client.chat.completions.create(
-                        model="llama-3.3-70b-versatile",
-                        messages=[{"role": "user", "content": context}]
-                    )
-                    bot_reply = response.choices[0].message.content
-
-                # عرض الرد
-                st.markdown(bot_reply)
-                
-                # النطق الصوتي
-                try:
-                    tts = gTTS(text=bot_reply[:300], lang='ar')
-                    audio_fp = io.BytesIO()
-                    tts.write_to_fp(audio_fp)
-                    st.audio(audio_fp, format='audio/mp3')
-                except: pass
-
-                # حفظ إكسل
-                df = pd.DataFrame([{"الرد": bot_reply}])
-                st.download_button("حفظ كـ Excel", data=df.to_csv(index=False).encode('utf-8-sig'), file_name="smak_vision.csv")
-                
-                st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+        st.info(status_msg) 
+        message_placeholder = st.empty()
+        full_response = ""
+        
+        groq_messages = [{"role": "system", "content": PROMPTS[domain]}]
+        for m in st.session_state.messages:
+            groq_messages.append({"role": m["role"], "content": m["content"]})
             
-            except Exception as e:
-                st.error(f"⚠️ خطأ: {e}")
+        try:
+            # 🌟 الموديل الجديد المحدث جاهز للعمل
+            stream = client.chat.completions.create(
+                model="llama-3.3-70b-versatile", 
+                messages=groq_messages,
+                temperature=0.1, 
+                stream=True,
+            )
+            for chunk in stream:
+                if chunk.choices[0].delta.content is not None:
+                    full_response += chunk.choices[0].delta.content
+                    message_placeholder.markdown(full_response + "▌") 
+            message_placeholder.markdown(full_response)
+            
+        except Exception as e:
+            st.error(f"حدث خطأ في الاتصال: {e}")
+            
+    st.session_state.messages.append({"role": "assistant", "content": full_response})
