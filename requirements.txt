@@ -1,7 +1,2 @@
 streamlit
 groq
-gTTS
-pandas
-duckduckgo-search
-PyPDF2
-Pillow
